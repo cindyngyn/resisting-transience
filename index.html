@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Resisting Transience</title>
+<title>Thesis - Experiment 2 Questionnaire</title>
 <link href="https://fonts.googleapis.com/css2?family=Space+Mono&display=swap" rel="stylesheet">
 <style>
 body {
@@ -101,10 +101,13 @@ const preview = document.getElementById("preview");
 const statusEl = document.getElementById("status");
 const errorLog = document.getElementById("error-log");
 
-// px at 96dpi: 12pt = 16px
-const FONT = "16px 'Space Mono', monospace";
+// 36pt = 48px at 96dpi
+const FONT_LARGE = "48px 'Space Mono', monospace";
+// 12pt = 16px at 96dpi  
+const FONT_SMALL = "16px 'Space Mono', monospace";
 const MARGIN = 36;
-const LINE_H = 26;
+const LINE_H_LARGE = 64;
+const LINE_H_SMALL = 26;
 
 function loadQuestion() {
     const progressEl = document.getElementById("progress");
@@ -160,19 +163,11 @@ function loadImage(src) {
     });
 }
 
-// Build a dashed line that fills the canvas width
-function dashedLine() {
-    ctx.font = FONT;
+function dashedLine(font) {
+    ctx.font = font;
     const dashW = ctx.measureText("-").width;
     const count = Math.floor((canvas.width - MARGIN * 2) / dashW);
     return "-".repeat(count);
-}
-
-// Draw a single line of text, returns new y
-function drawLine(text, x, y, align) {
-    ctx.textAlign = align || "left";
-    ctx.fillText(text, x, y);
-    return y + LINE_H;
 }
 
 async function generateArtwork() {
@@ -194,15 +189,11 @@ async function generateArtwork() {
         return;
     }
 
-    // White background
     ctx.clearRect(0, 0, canvas.width, canvas.height);
     ctx.fillStyle = "#ffffff";
     ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-    // Draw image layers
     loaded.forEach(r => drawImageLayer(r.img));
-
-    // Draw receipt text overlay
     drawReceipt();
 
     preview.src = canvas.toDataURL("image/jpeg", 0.92);
@@ -241,48 +232,50 @@ function drawImageLayer(img) {
 
 function drawReceipt() {
     ctx.save();
-    ctx.font      = FONT;
-    ctx.fillStyle = "#000000";
-    ctx.globalAlpha = 1;
+    ctx.fillStyle    = "#000000";
+    ctx.globalAlpha  = 1;
     ctx.textBaseline = "top";
+    ctx.textAlign    = "left";
 
-    const x   = MARGIN;
-    const mid  = canvas.width / 2;
-    const dash = dashedLine();
+    const x = MARGIN;
+
+    // — TOP SECTION —
     let y = MARGIN;
 
-    // Title: "resisting" then "transience", centered
-    ctx.textAlign = "center";
-    y = drawLine("resisting", mid, y);
-    y = drawLine("transience", mid, y);
-    y += 6;
+    // Title at 36pt, left-aligned
+    ctx.font = FONT_LARGE;
+    y += LINE_H_LARGE; // space before first line so descenders don't clip
+    ctx.fillText("resisting", x, y - LINE_H_LARGE + 8);
+    ctx.fillText("transience", x, y + 8);
+    y += LINE_H_LARGE + 10;
 
-    // Dashed line
-    ctx.textAlign = "left";
-    y = drawLine(dash, x, y);
-    y += 6;
+    // Switch to 12pt for everything else
+    ctx.font = FONT_SMALL;
+    const dash = dashedLine(FONT_SMALL);
 
-    // Body text, left-aligned
-    y = drawLine("i am", x, y);
-    y = drawLine("afraid", x, y);
-    y = drawLine("of", x, y);
-    y = drawLine("losing...", x, y);
-    y = drawLine(customText, x, y);
-    y += 6;
+    ctx.fillText(dash, x, y);
+    y += LINE_H_SMALL + 6;
 
-    // Dashed line
-    y = drawLine(dash, x, y);
-    y += 6;
+    ctx.fillText("i am", x, y);       y += LINE_H_SMALL;
+    ctx.fillText("afraid", x, y);     y += LINE_H_SMALL;
+    ctx.fillText("of", x, y);         y += LINE_H_SMALL;
+    ctx.fillText("losing...", x, y);  y += LINE_H_SMALL;
+    ctx.fillText(customText + ".", x, y);
 
-    // Timestamp
-    const now = new Date();
+    // — BOTTOM SECTION — anchored to canvas bottom
     const pad = n => String(n).padStart(2, "0");
+    const now = new Date();
     const timestamp =
         `${now.getFullYear()}-${pad(now.getMonth()+1)}-${pad(now.getDate())} ` +
         `${pad(now.getHours())}:${pad(now.getMinutes())}:${pad(now.getSeconds())}`;
 
-    ctx.textAlign = "left";
-    drawLine(timestamp, x, y);
+    // Work upward from bottom margin
+    const bottomY = canvas.height - MARGIN;
+    const tsY     = bottomY - LINE_H_SMALL;
+    const dashY   = tsY - LINE_H_SMALL - 6;
+
+    ctx.fillText(dash, x, dashY);
+    ctx.fillText(timestamp, x, tsY);
 
     ctx.restore();
 }
