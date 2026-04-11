@@ -101,13 +101,9 @@ const preview = document.getElementById("preview");
 const statusEl = document.getElementById("status");
 const errorLog = document.getElementById("error-log");
 
-// 36pt = 48px at 96dpi
-const FONT_LARGE = "48px 'Space Mono', monospace";
-// 12pt = 16px at 96dpi  
-const FONT_SMALL = "16px 'Space Mono', monospace";
+const FONT   = "48px 'Space Mono', monospace";
 const MARGIN = 36;
-const LINE_H_LARGE = 64;
-const LINE_H_SMALL = 26;
+const LINE_H = 64;
 
 function loadQuestion() {
     const progressEl = document.getElementById("progress");
@@ -163,8 +159,8 @@ function loadImage(src) {
     });
 }
 
-function dashedLine(font) {
-    ctx.font = font;
+function dashedLine() {
+    ctx.font = FONT;
     const dashW = ctx.measureText("-").width;
     const count = Math.floor((canvas.width - MARGIN * 2) / dashW);
     return "-".repeat(count);
@@ -232,47 +228,35 @@ function drawImageLayer(img) {
 
 function drawReceipt() {
     ctx.save();
+    ctx.font         = FONT;
     ctx.fillStyle    = "#000000";
     ctx.globalAlpha  = 1;
     ctx.textBaseline = "top";
     ctx.textAlign    = "left";
 
-    const x = MARGIN;
+    const x    = MARGIN;
+    const dash = dashedLine();
 
-    // — TOP SECTION —
+    // — TOP —
     let y = MARGIN;
-
-    // Title at 36pt, left-aligned
-    ctx.font = FONT_LARGE;
-    y += LINE_H_LARGE; // space before first line so descenders don't clip
-    ctx.fillText("resisting", x, y - LINE_H_LARGE + 8);
-    ctx.fillText("transience", x, y + 8);
-    y += LINE_H_LARGE + 10;
-
-    // Switch to 12pt for everything else
-    ctx.font = FONT_SMALL;
-    const dash = dashedLine(FONT_SMALL);
-
-    ctx.fillText(dash, x, y);
-    y += LINE_H_SMALL + 6;
-
-    ctx.fillText("i am", x, y);       y += LINE_H_SMALL;
-    ctx.fillText("afraid", x, y);     y += LINE_H_SMALL;
-    ctx.fillText("of", x, y);         y += LINE_H_SMALL;
-    ctx.fillText("losing...", x, y);  y += LINE_H_SMALL;
+    ctx.fillText("resisting", x, y);  y += LINE_H;
+    ctx.fillText("transience", x, y); y += LINE_H + 8;
+    ctx.fillText(dash, x, y);         y += LINE_H + 8;
+    ctx.fillText("i am", x, y);       y += LINE_H;
+    ctx.fillText("afraid", x, y);     y += LINE_H;
+    ctx.fillText("of", x, y);         y += LINE_H;
+    ctx.fillText("losing...", x, y);  y += LINE_H;
     ctx.fillText(customText + ".", x, y);
 
-    // — BOTTOM SECTION — anchored to canvas bottom
+    // — BOTTOM — anchored upward from canvas bottom
     const pad = n => String(n).padStart(2, "0");
     const now = new Date();
     const timestamp =
         `${now.getFullYear()}-${pad(now.getMonth()+1)}-${pad(now.getDate())} ` +
         `${pad(now.getHours())}:${pad(now.getMinutes())}:${pad(now.getSeconds())}`;
 
-    // Work upward from bottom margin
-    const bottomY = canvas.height - MARGIN;
-    const tsY     = bottomY - LINE_H_SMALL;
-    const dashY   = tsY - LINE_H_SMALL - 6;
+    const tsY   = canvas.height - MARGIN - LINE_H;
+    const dashY = tsY - LINE_H - 8;
 
     ctx.fillText(dash, x, dashY);
     ctx.fillText(timestamp, x, tsY);
