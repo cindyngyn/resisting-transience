@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Thesis - Experiment 2 Questionnaire</title>
+<title>Resisting Transience</title>
 <link href="https://fonts.googleapis.com/css2?family=Space+Mono&display=swap" rel="stylesheet">
 <style>
 body {
@@ -189,7 +189,7 @@ async function generateArtwork() {
     ctx.fillStyle = "#ffffff";
     ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-    loaded.forEach(r => drawImageLayer(r.img));
+    loaded.forEach((r, i) => drawImageLayer(r.img, keys[i]));
     drawReceipt();
 
     preview.src = canvas.toDataURL("image/jpeg", 0.92);
@@ -198,9 +198,13 @@ async function generateArtwork() {
         : "Your artwork has been created.";
 }
 
-function drawImageLayer(img) {
+function drawImageLayer(img, key) {
     ctx.save();
-    ctx.globalAlpha = 0.45 + Math.random() * 0.40;
+    const qNum = parseInt(key[0]);
+    const isLowOpacity = qNum === 1 || qNum === 3;
+    ctx.globalAlpha = isLowOpacity
+        ? 0.15 + Math.random() * 0.35   // 0.15–0.50
+        : 0.45 + Math.random() * 0.40;  // 0.45–0.85
 
     const canvasRatio = canvas.width / canvas.height;
     const imgRatio    = img.width / img.height;
@@ -245,7 +249,7 @@ function drawReceipt() {
     ctx.fillText("i am", x, y);       y += LINE_H;
     ctx.fillText("afraid", x, y);     y += LINE_H;
     ctx.fillText("of", x, y);         y += LINE_H;
-    ctx.fillText("losing...", x, y);  y += LINE_H;
+    ctx.fillText("losing", x, y);  y += LINE_H;
     ctx.fillText(customText + ".", x, y);
 
     // — BOTTOM — anchored upward from canvas bottom
