@@ -241,28 +241,34 @@ function drawReceipt() {
     const x    = MARGIN;
     const dash = dashedLine();
 
-    // — TOP —
+    // — TOP — title only
     let y = MARGIN;
     ctx.fillText("resisting", x, y);  y += LINE_H;
-    ctx.fillText("transience", x, y); y += LINE_H + 8;
-    ctx.fillText(dash, x, y);         y += LINE_H + 8;
-    ctx.fillText("i am", x, y);       y += LINE_H;
-    ctx.fillText("afraid", x, y);     y += LINE_H;
-    ctx.fillText("of", x, y);         y += LINE_H;
-    ctx.fillText("losing", x, y);  y += LINE_H;
-    ctx.fillText(customText + ".", x, y);
+    ctx.fillText("transience", x, y);
 
-    // — BOTTOM — anchored upward from canvas bottom
+    // — BOTTOM — work upward from canvas bottom
     const pad = n => String(n).padStart(2, "0");
     const now = new Date();
     const timestamp =
         `${now.getFullYear()}-${pad(now.getMonth()+1)}-${pad(now.getDate())} ` +
         `${pad(now.getHours())}:${pad(now.getMinutes())}:${pad(now.getSeconds())}`;
 
-    const tsY   = canvas.height - MARGIN - LINE_H;
-    const dashY = tsY - LINE_H - 8;
+    const tsY        = canvas.height - MARGIN - LINE_H;
+    const dashBotY   = tsY - LINE_H - 8;
+    const responseY  = dashBotY - LINE_H - 8;
+    const losingY    = responseY - LINE_H;
+    const ofY        = losingY - LINE_H;
+    const afraidY    = ofY - LINE_H;
+    const iAmY       = afraidY - LINE_H;
+    const dashTopY   = iAmY - LINE_H - 8;
 
-    ctx.fillText(dash, x, dashY);
+    ctx.fillText(dash, x, dashTopY);
+    ctx.fillText("i am", x, iAmY);
+    ctx.fillText("afraid", x, afraidY);
+    ctx.fillText("of", x, ofY);
+    ctx.fillText("losing", x, losingY);
+    ctx.fillText(customText + ".", x, responseY);
+    ctx.fillText(dash, x, dashBotY);
     ctx.fillText(timestamp, x, tsY);
 
     ctx.restore();
