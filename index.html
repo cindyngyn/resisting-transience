@@ -3,7 +3,8 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Thesis - Experiment 2 Questionnaire</title>
+<title>Resisting Transience</title>
+<link href="https://fonts.googleapis.com/css2?family=Space+Mono&display=swap" rel="stylesheet">
 <style>
 body {
     margin: 0;
@@ -50,6 +51,8 @@ input[type="text"] {
 }
 #progress { font-size: 14px; margin-bottom: 12px; color: gray; }
 #result { display: none; }
+#status { font-size: 14px; color: gray; margin-bottom: 8px; }
+#error-log { font-size: 12px; color: #c00; margin-top: 8px; line-height: 1.6; display: none; }
 #preview { width: 100%; margin-top: 16px; border-radius: 12px; display: block; }
 canvas { display: none; }
 </style>
@@ -61,7 +64,8 @@ canvas { display: none; }
         <h2 id="question"></h2>
         <div id="answers"></div>
         <div id="result">
-            <p style="margin-top:0;">Your artwork has been created.</p>
+            <p id="status" style="margin-top:0;"></p>
+            <div id="error-log"></div>
             <img id="preview">
         </div>
     </div>
@@ -94,6 +98,13 @@ let customText = "";
 const canvas = document.getElementById("artCanvas");
 const ctx = canvas.getContext("2d");
 const preview = document.getElementById("preview");
+const statusEl = document.getElementById("status");
+const errorLog = document.getElementById("error-log");
+
+// px at 96dpi: 12pt = 16px
+const FONT = "16px 'Space Mono', monospace";
+const MARGIN = 36;
+const LINE_H = 26;
 
 function loadQuestion() {
     const progressEl = document.getElementById("progress");
@@ -113,12 +124,12 @@ function loadQuestion() {
         btn.className = "option-btn";
         btn.textContent = "Create Artwork";
         btn.onclick = () => {
-            customText = input.value.trim() || "everything";
+            customText = input.value.trim().toLowerCase() || "everything";
             questionEl.style.display = "none";
             answersEl.style.display  = "none";
             progressEl.style.display = "none";
             document.getElementById("result").style.display = "block";
-            document.querySelector("#result p").textContent = "Creating your artwork…";
+            statusEl.textContent = "Creating your artwork…";
             generateArtwork();
         };
 
@@ -140,46 +151,68 @@ function loadQuestion() {
     });
 }
 
-// Returns a Promise that resolves to a loaded Image, or null on error
 function loadImage(src) {
     return new Promise((resolve) => {
         const img = new Image();
-        img.onload  = () => resolve(img);
-        img.onerror = () => { console.error("Failed to load:", src); resolve(null); };
+        img.onload  = () => resolve({ img, src, ok: true });
+        img.onerror = () => { console.error("Failed:", src); resolve({ img: null, src, ok: false }); };
         img.src = src;
     });
 }
 
+// Build a dashed line that fills the canvas width
+function dashedLine() {
+    ctx.font = FONT;
+    const dashW = ctx.measureText("-").width;
+    const count = Math.floor((canvas.width - MARGIN * 2) / dashW);
+    return "-".repeat(count);
+}
+
+// Draw a single line of text, returns new y
+function drawLine(text, x, y, align) {
+    ctx.textAlign = align || "left";
+    ctx.fillText(text, x, y);
+    return y + LINE_H;
+}
+
 async function generateArtwork() {
-    // Build shuffled list of image paths based on answers
     const keys = selections.map((sel, i) => `${i + 1}${["A","B","C","D"][sel]}`);
     keys.sort(() => Math.random() - 0.5);
 
-    const paths = keys.map(key => `images/${key}.jpg`);
+    const results = await Promise.all(keys.map(key => loadImage(`images/${key}.jpg`)));
 
-    // Wait for ALL images to finish loading before drawing anything
-    const images = await Promise.all(paths.map(loadImage));
+    const failed = results.filter(r => !r.ok);
+    const loaded = results.filter(r => r.ok);
 
-    // Clear and fill background
+    if (failed.length > 0) {
+        errorLog.style.display = "block";
+        errorLog.innerHTML = "Could not load:<br>" + failed.map(r => `&nbsp;&nbsp;${r.src}`).join("<br>");
+    }
+
+    if (loaded.length === 0) {
+        statusEl.textContent = "No images could be loaded. Check the error log and your browser console (F12).";
+        return;
+    }
+
+    // White background
     ctx.clearRect(0, 0, canvas.width, canvas.height);
     ctx.fillStyle = "#ffffff";
     ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-    // Draw each layer (null entries are skipped)
-    images.forEach(img => {
-        if (img) drawImageLayer(img);
-    });
+    // Draw image layers
+    loaded.forEach(r => drawImageLayer(r.img));
 
-    drawText();
+    // Draw receipt text overlay
+    drawReceipt();
 
     preview.src = canvas.toDataURL("image/jpeg", 0.92);
-    document.querySelector("#result p").textContent = "Your artwork has been created.";
+    statusEl.textContent = failed.length > 0
+        ? `Artwork created with ${loaded.length} of 5 images (${failed.length} failed to load).`
+        : "Your artwork has been created.";
 }
 
 function drawImageLayer(img) {
     ctx.save();
-
-    // Random opacity 0.45–0.85
     ctx.globalAlpha = 0.45 + Math.random() * 0.40;
 
     const canvasRatio = canvas.width / canvas.height;
@@ -198,9 +231,7 @@ function drawImageLayer(img) {
     const offsetY = (Math.random() - 0.5) * 240;
     const cx      = (canvas.width  - drawWidth)  / 2 + offsetX + drawWidth  / 2;
     const cy      = (canvas.height - drawHeight) / 2 + offsetY + drawHeight / 2;
-
-    // Random rotation ±15°
-    const angle = (Math.random() - 0.5) * 30 * (Math.PI / 180);
+    const angle   = (Math.random() - 0.5) * 30 * (Math.PI / 180);
 
     ctx.translate(cx, cy);
     ctx.rotate(angle);
@@ -208,41 +239,50 @@ function drawImageLayer(img) {
     ctx.restore();
 }
 
-function drawText() {
-    const sentence = `I am afraid of losing ${customText}.`;
-    const maxWidth = canvas.width - 80;
-    const fontSize = 36;
-    const lineH    = fontSize * 1.45;
-
+function drawReceipt() {
     ctx.save();
-    ctx.font = `italic ${fontSize}px Georgia, serif`;
-
-    const words = sentence.split(" ");
-    const lines = [];
-    let line = "";
-    words.forEach(word => {
-        const test = line ? line + " " + word : word;
-        if (ctx.measureText(test).width > maxWidth && line) {
-            lines.push(line);
-            line = word;
-        } else {
-            line = test;
-        }
-    });
-    if (line) lines.push(line);
-
-    const totalH = lines.length * lineH;
-    const blockY = canvas.height - 110 - totalH;
-
-    ctx.globalAlpha = 0.6;
-    ctx.fillStyle   = "#ffffff";
-    ctx.fillRect(40, blockY - 18, canvas.width - 80, totalH + 36);
-
-    ctx.globalAlpha  = 1;
-    ctx.fillStyle    = "#000000";
-    ctx.textAlign    = "center";
+    ctx.font      = FONT;
+    ctx.fillStyle = "#000000";
+    ctx.globalAlpha = 1;
     ctx.textBaseline = "top";
-    lines.forEach((l, i) => ctx.fillText(l, canvas.width / 2, blockY + i * lineH));
+
+    const x   = MARGIN;
+    const mid  = canvas.width / 2;
+    const dash = dashedLine();
+    let y = MARGIN;
+
+    // Title: "resisting" then "transience", centered
+    ctx.textAlign = "center";
+    y = drawLine("resisting", mid, y);
+    y = drawLine("transience", mid, y);
+    y += 6;
+
+    // Dashed line
+    ctx.textAlign = "left";
+    y = drawLine(dash, x, y);
+    y += 6;
+
+    // Body text, left-aligned
+    y = drawLine("i am", x, y);
+    y = drawLine("afraid", x, y);
+    y = drawLine("of", x, y);
+    y = drawLine("losing...", x, y);
+    y = drawLine(customText, x, y);
+    y += 6;
+
+    // Dashed line
+    y = drawLine(dash, x, y);
+    y += 6;
+
+    // Timestamp
+    const now = new Date();
+    const pad = n => String(n).padStart(2, "0");
+    const timestamp =
+        `${now.getFullYear()}-${pad(now.getMonth()+1)}-${pad(now.getDate())} ` +
+        `${pad(now.getHours())}:${pad(now.getMinutes())}:${pad(now.getSeconds())}`;
+
+    ctx.textAlign = "left";
+    drawLine(timestamp, x, y);
 
     ctx.restore();
 }
