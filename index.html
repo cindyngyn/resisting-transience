@@ -80,6 +80,7 @@ canvas { display: none; }
 </div>
  
 <canvas id="artCanvas" width="675" height="1200"></canvas>
+<canvas id="exportCanvas" width="675" height="1500"></canvas>
  
 <script>
 const questions = [
@@ -105,6 +106,8 @@ let customText = "";
  
 const canvas = document.getElementById("artCanvas");
 const ctx = canvas.getContext("2d");
+const exportCanvas = document.getElementById("exportCanvas");
+const exportCtx = exportCanvas.getContext("2d");
 const preview = document.getElementById("preview");
 const statusEl = document.getElementById("status");
 const errorLog = document.getElementById("error-log");
@@ -206,7 +209,12 @@ async function generateArtwork() {
     loaded.forEach((r, i) => drawImageLayer(r.img, keys[i]));
     drawReceipt();
  
-    preview.src = canvas.toDataURL("image/jpeg", 0.92);
+    // Composite onto export canvas with 150px white padding top and bottom
+    exportCtx.fillStyle = "#ffffff";
+    exportCtx.fillRect(0, 0, exportCanvas.width, exportCanvas.height);
+    exportCtx.drawImage(canvas, 0, 150);
+ 
+    preview.src = exportCanvas.toDataURL("image/jpeg", 0.92);
     statusEl.textContent = failed.length > 0
         ? `Artwork created with ${loaded.length} of 5 images (${failed.length} failed to load).`
         : "Your artwork has been created.";
