@@ -45,6 +45,7 @@ input[type="text"] {
     width: 100%;
     padding: 14px;
     font-size: 16px;
+    font-family: inherit;
     margin-bottom: 12px;
     border-radius: 12px;
     border: 1px solid #ccc;
@@ -54,44 +55,114 @@ input[type="text"] {
 #result { display: none; }
 #status { font-size: 14px; color: gray; margin-bottom: 8px; }
 #error-log { font-size: 12px; color: #c00; margin-top: 8px; line-height: 1.6; display: none; }
-#preview { width: 100%; margin-top: 16px; border-radius: 12px; display: block; }
+#preview { width: 100%; margin-top: 16px; border-radius: 12px; display: block; margin-bottom: 24px; }
 canvas { display: none; }
+
+/* Layer breakdown */
+.layers-label {
+    font-size: 13px;
+    color: gray;
+    margin-bottom: 16px;
+}
+
+.layer-item {
+    display: flex;
+    gap: 12px;
+    align-items: flex-start;
+    margin-bottom: 16px;
+    padding-bottom: 16px;
+    border-bottom: 1px solid #f0f0f0;
+    opacity: 0;
+    transform: translateY(8px);
+    transition: opacity 0.35s ease, transform 0.35s ease;
+}
+.layer-item:last-child { border-bottom: none; margin-bottom: 0; }
+.layer-item.visible { opacity: 1; transform: translateY(0); }
+
+.layer-thumb {
+    width: 64px;
+    height: 64px;
+    object-fit: cover;
+    border-radius: 8px;
+    flex-shrink: 0;
+    border: 1px solid #eee;
+}
+.layer-thumb-placeholder {
+    width: 64px;
+    height: 64px;
+    background: #f5f5f5;
+    border-radius: 8px;
+    flex-shrink: 0;
+    border: 1px solid #eee;
+}
+
+.layer-info { flex: 1; min-width: 0; }
+.layer-number { font-size: 11px; color: #bbb; margin-bottom: 4px; }
+.layer-question { font-size: 12px; color: gray; margin-bottom: 5px; line-height: 1.5; }
+.layer-response { font-size: 14px; color: #111; line-height: 1.5; }
+
+#print-btn {
+    width: 100%;
+    padding: 16px;
+    margin-top: 20px;
+    border: none;
+    border-radius: 12px;
+    font-size: 16px;
+    font-family: inherit;
+    background: black;
+    color: white;
+    cursor: pointer;
+}
+#print-btn:disabled { background: #999; cursor: default; }
+#print-status { font-size: 13px; color: gray; margin-top: 8px; text-align: center; }
 </style>
 </head>
 <body>
 <div class="container">
     <div class="card">
+
         <div id="intro">
             <p style="font-size: 15px; line-height: 1.8; margin: 0 0 24px;">Complete the following questionnaire to receive a fully unique and custom collage.<br><br>Each layer will be drawn from your reflections and responses.<br></p>
             <button class="option-btn" style="text-align: center;" onclick="startQuiz()">Proceed ₊˚⊹</button>
         </div>
- 
+
         <div id="quiz" style="display: none;">
-        <div id="progress"></div>
-        <h2 id="question"></h2>
-        <div id="answers"></div>
-        <div id="result">
-            <p id="status" style="margin-top:0;"></p>
-            <div id="error-log"></div>
-            <img id="preview">
+            <div id="progress"></div>
+            <h2 id="question"></h2>
+            <div id="answers"></div>
+
+            <div id="result">
+                <p id="status"></p>
+                <div id="error-log"></div>
+
+                <div id="results-content" style="display:none;">
+                    <img id="preview">
+
+                    <p class="layers-label">Your collage is made of these layers:</p>
+                    <div id="layers-list"></div>
+
+                    <button id="print-btn" onclick="sendToPrinter()">Print</button>
+                    <p id="print-status"></p>
+                </div>
+            </div>
         </div>
-        </div>
+
     </div>
 </div>
- 
+
 <canvas id="artCanvas" width="675" height="1200"></canvas>
 <canvas id="exportCanvas" width="675" height="1500"></canvas>
- 
+
 <script>
 const questions = [
     "How do you look back on memories?",
     "When faced with uncertainty, you feel:",
     "If something meaningful begins to fade, you:",
-    "When your life shifts in ways you didn’t anticipate, you tend to:",
+    "When your life shifts in ways you didn't anticipate, you tend to:",
     "What feels true to you right now?",
     "Name something you're afraid of losing:"
 ];
- 
+
 const options = [
     ["I revisit them often in my head.", "I document them.", "I avoid them so they don't consume me.", "I let them shift over time."],
     ["Anxiety.", "A sense of possibility.", "The urge to regain control.", "Disoriented."],
@@ -99,43 +170,45 @@ const options = [
     ["Hold on to it tightly.", "Step back and observe.", "Prepare for the worst.", "Let it unfold."],
     ["Change feels inevitable.", "I'm tired of resisting what shifts.", "Stability feels safer than change.", "I don't know what's stable anymore."]
 ];
- 
+
 let current = 0;
 let selections = [];
 let customText = "";
- 
-const canvas = document.getElementById("artCanvas");
-const ctx = canvas.getContext("2d");
+let responseTexts = [];
+
+const canvas       = document.getElementById("artCanvas");
+const ctx          = canvas.getContext("2d");
 const exportCanvas = document.getElementById("exportCanvas");
-const exportCtx = exportCanvas.getContext("2d");
-const preview = document.getElementById("preview");
-const statusEl = document.getElementById("status");
-const errorLog = document.getElementById("error-log");
- 
+const exportCtx    = exportCanvas.getContext("2d");
+const statusEl     = document.getElementById("status");
+const errorLog     = document.getElementById("error-log");
+
 const FONT   = "48px 'Space Mono', monospace";
 const MARGIN = 36;
 const LINE_H = 64;
- 
+
+const PI_URL = "https://api.yourdomain.com";
+
 function startQuiz() {
     document.getElementById("intro").style.display = "none";
     document.getElementById("quiz").style.display  = "block";
     loadQuestion();
 }
- 
+
 function loadQuestion() {
     const progressEl = document.getElementById("progress");
     const questionEl = document.getElementById("question");
     const answersEl  = document.getElementById("answers");
- 
+
     progressEl.textContent = `Question ${current + 1} of ${questions.length}`;
     questionEl.textContent = questions[current];
     answersEl.innerHTML = "";
- 
+
     if (current === 5) {
         const input = document.createElement("input");
         input.type = "text";
         input.placeholder = "Type your answer";
- 
+
         const btn = document.createElement("button");
         btn.className = "option-btn";
         btn.textContent = "Create Artwork";
@@ -148,25 +221,26 @@ function loadQuestion() {
             statusEl.textContent = "Creating your artwork…";
             generateArtwork();
         };
- 
+
         answersEl.appendChild(input);
         answersEl.appendChild(btn);
         return;
     }
- 
+
     options[current].forEach((option, index) => {
         const btn = document.createElement("button");
         btn.className = "option-btn";
         btn.textContent = option;
         btn.onclick = () => {
             selections.push(index);
+            responseTexts.push(option);
             current++;
             loadQuestion();
         };
         answersEl.appendChild(btn);
     });
 }
- 
+
 function loadImage(src) {
     return new Promise((resolve) => {
         const img = new Image();
@@ -175,62 +249,104 @@ function loadImage(src) {
         img.src = src;
     });
 }
- 
+
 function dashedLine() {
     ctx.font = FONT;
     const dashW = ctx.measureText("-").width;
     const count = Math.floor((canvas.width - MARGIN * 2) / dashW);
     return "-".repeat(count);
 }
- 
+
 async function generateArtwork() {
-    const keys = selections.map((sel, i) => `${i + 1}${["A","B","C","D"][sel]}`);
-    keys.sort(() => Math.random() - 0.5);
- 
-    const results = await Promise.all(keys.map(key => loadImage(`images/${key}.jpg`)));
- 
+    const keys     = selections.map((sel, i) => `${i + 1}${["A","B","C","D"][sel]}`);
+    const drawKeys = [...keys].sort(() => Math.random() - 0.5);
+
+    const results = await Promise.all(drawKeys.map(key => loadImage(`images/${key}.jpg`)));
+
     const failed = results.filter(r => !r.ok);
     const loaded = results.filter(r => r.ok);
- 
+
     if (failed.length > 0) {
         errorLog.style.display = "block";
         errorLog.innerHTML = "Could not load:<br>" + failed.map(r => `&nbsp;&nbsp;${r.src}`).join("<br>");
     }
- 
+
     if (loaded.length === 0) {
         statusEl.textContent = "No images could be loaded. Check the error log and your browser console (F12).";
         return;
     }
- 
+
     ctx.clearRect(0, 0, canvas.width, canvas.height);
     ctx.fillStyle = "#ffffff";
     ctx.fillRect(0, 0, canvas.width, canvas.height);
- 
-    loaded.forEach((r, i) => drawImageLayer(r.img, keys[i]));
+
+    loaded.forEach((r, i) => drawImageLayer(r.img, drawKeys[i]));
     drawReceipt();
- 
-    // Composite onto export canvas with 150px white padding top and bottom
+
     exportCtx.fillStyle = "#ffffff";
     exportCtx.fillRect(0, 0, exportCanvas.width, exportCanvas.height);
     exportCtx.drawImage(canvas, 0, 150);
- 
-    preview.src = exportCanvas.toDataURL("image/jpeg", 0.92);
+
+    document.getElementById("preview").src = exportCanvas.toDataURL("image/jpeg", 0.92);
     statusEl.textContent = failed.length > 0
         ? `Artwork created with ${loaded.length} of 5 images (${failed.length} failed to load).`
-        : "Your artwork has been created.";
+        : "";
+
+    buildLayerList(keys);
+    document.getElementById("results-content").style.display = "block";
 }
- 
+
+function buildLayerList(keys) {
+    const list = document.getElementById("layers-list");
+    list.innerHTML = "";
+
+    keys.forEach((key, i) => {
+        const qIndex = parseInt(key[0]) - 1;
+        const responseText = responseTexts[qIndex] || (customText + ".");
+
+        const item = document.createElement("div");
+        item.className = "layer-item";
+
+        // Thumbnail — use a placeholder div first, swap in image if it loads
+        const placeholder = document.createElement("div");
+        placeholder.className = "layer-thumb-placeholder";
+        item.appendChild(placeholder);
+
+        const thumbImg = new Image();
+        thumbImg.onload = () => {
+            const thumb = document.createElement("img");
+            thumb.className = "layer-thumb";
+            thumb.src = `images/${key}.jpg`;
+            item.replaceChild(thumb, placeholder);
+        };
+        thumbImg.src = `images/${key}.jpg`;
+
+        const info = document.createElement("div");
+        info.className = "layer-info";
+        info.innerHTML = `
+            <p class="layer-number">Layer ${i + 1}</p>
+            <p class="layer-question">${questions[qIndex]}</p>
+            <p class="layer-response">${responseText}</p>
+        `;
+        item.appendChild(info);
+        list.appendChild(item);
+
+        // Staggered fade-in
+        setTimeout(() => item.classList.add("visible"), i * 100);
+    });
+}
+
 function drawImageLayer(img, key) {
     ctx.save();
     const qNum = parseInt(key[0]);
     const isLowOpacity = qNum === 1 || qNum === 3;
     ctx.globalAlpha = isLowOpacity
-        ? 0.15 + Math.random() * 0.35   // 0.15–0.50
-        : 0.45 + Math.random() * 0.40;  // 0.45–0.85
- 
+        ? 0.15 + Math.random() * 0.35
+        : 0.45 + Math.random() * 0.40;
+
     const canvasRatio = canvas.width / canvas.height;
     const imgRatio    = img.width / img.height;
- 
+
     let drawWidth, drawHeight;
     if (imgRatio > canvasRatio) {
         drawHeight = canvas.height * (1.0 + Math.random() * 0.25);
@@ -239,19 +355,19 @@ function drawImageLayer(img, key) {
         drawWidth  = canvas.width * (1.0 + Math.random() * 0.25);
         drawHeight = drawWidth / imgRatio;
     }
- 
+
     const offsetX = (Math.random() - 0.5) * 120;
     const offsetY = (Math.random() - 0.5) * 240;
     const cx      = (canvas.width  - drawWidth)  / 2 + offsetX + drawWidth  / 2;
     const cy      = (canvas.height - drawHeight) / 2 + offsetY + drawHeight / 2;
     const angle   = (Math.random() - 0.5) * 30 * (Math.PI / 180);
- 
+
     ctx.translate(cx, cy);
     ctx.rotate(angle);
     ctx.drawImage(img, -drawWidth / 2, -drawHeight / 2, drawWidth, drawHeight);
     ctx.restore();
 }
- 
+
 function drawReceipt() {
     ctx.save();
     ctx.font         = FONT;
@@ -259,30 +375,29 @@ function drawReceipt() {
     ctx.globalAlpha  = 1;
     ctx.textBaseline = "top";
     ctx.textAlign    = "left";
- 
+
     const x    = MARGIN;
     const dash = dashedLine();
- 
-    // — TOP — title + first dashes
+
     let y = MARGIN;
     ctx.fillText("resisting", x, y);  y += LINE_H;
     ctx.fillText("transience", x, y); y += LINE_H + 8;
     ctx.fillText(dash, x, y);
- 
-    // — BOTTOM — work upward from canvas bottom
+
     const pad = n => String(n).padStart(2, "0");
     const now = new Date();
     const timestamp =
         `${now.getFullYear()}-${pad(now.getMonth()+1)}-${pad(now.getDate())} ` +
         `${pad(now.getHours())}:${pad(now.getMinutes())}:${pad(now.getSeconds())}`;
- 
-    const tsY        = canvas.height - MARGIN - LINE_H;
-    const dashBotY   = tsY - LINE_H - 8;
-    const responseY  = dashBotY - LINE_H - 8;
-    const losingY    = responseY - LINE_H;
-    const ofY        = losingY - LINE_H;
-    const afraidY    = ofY - LINE_H;
-    const iAmY       = afraidY - LINE_H;
+
+    const tsY       = canvas.height - MARGIN - LINE_H;
+    const dashBotY  = tsY - LINE_H - 8;
+    const responseY = dashBotY - LINE_H - 8;
+    const losingY   = responseY - LINE_H;
+    const ofY       = losingY - LINE_H;
+    const afraidY   = ofY - LINE_H;
+    const iAmY      = afraidY - LINE_H;
+
     ctx.fillText("i am", x, iAmY);
     ctx.fillText("afraid", x, afraidY);
     ctx.fillText("of", x, ofY);
@@ -290,7 +405,7 @@ function drawReceipt() {
     ctx.fillText(customText + ".", x, responseY);
     ctx.fillText(dash, x, dashBotY);
     ctx.fillText(timestamp, x, tsY);
- 
+
     ctx.restore();
 }
 </script>
