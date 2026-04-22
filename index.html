@@ -9,7 +9,7 @@
 body {
     margin: 0;
     font-family: 'Space Mono', monospace;
-    background: #f5f5f5;
+    background: black;
     display: flex;
     justify-content: center;
 }
@@ -103,11 +103,19 @@ canvas { display: none; }
 </head>
 <body>
 <div class="container">
-    <div class="card">
 
+    <img src="resisting_transience_title.jpg" class="title-image">
+
+    <div class="card">
         <div id="intro">
-            <p style="font-size: 15px; line-height: 1.8; margin: 0 0 24px;">Complete the following questionnaire to receive a fully unique and custom collage.<br><br>Each layer will be drawn from your reflections and responses.<br></p>
-            <button class="option-btn" style="text-align: center;" onclick="startQuiz()">Proceed ₊˚⊹</button>
+            <p style="font-size: 15px; line-height: 1.8; margin: 0 0 24px;">
+                Complete the following questionnaire to receive a fully unique and custom collage.<br><br>
+                Each layer will be drawn from your reflections and responses.<br>
+            </p>
+
+            <button class="option-btn" style="text-align: center;" onclick="startQuiz()">
+                Proceed ₊˚⊹
+            </button>
         </div>
 
         <div id="quiz" style="display: none;">
@@ -122,7 +130,7 @@ canvas { display: none; }
                 <div id="results-content" style="display:none;">
                     <p style="font-size: 15px; line-height: 1.8; margin: 0 0 4px;">A collage has been created based on your reminiscence. ｡⊹˚.</p>
                     <img id="preview">
-                    <p class="layers-label">Your collage is made of these layers:<br></p>
+                    <p class="layers-label">Your collage is made of these layers:</p>
                     <div id="layers-list"></div>
                 </div>
             </div>
