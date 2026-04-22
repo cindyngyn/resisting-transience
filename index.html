@@ -58,7 +58,6 @@ input[type="text"] {
 #preview { width: 100%; margin-top: 16px; border-radius: 12px; display: block; margin-bottom: 24px; }
 canvas { display: none; }
 
-/* Layer breakdown */
 .layers-label {
     font-size: 13px;
     color: gray;
@@ -100,21 +99,6 @@ canvas { display: none; }
 .layer-number { font-size: 11px; color: #bbb; margin-bottom: 4px; }
 .layer-question { font-size: 12px; color: gray; margin-bottom: 5px; line-height: 1.5; }
 .layer-response { font-size: 14px; color: #111; line-height: 1.5; }
-
-#print-btn {
-    width: 100%;
-    padding: 16px;
-    margin-top: 20px;
-    border: none;
-    border-radius: 12px;
-    font-size: 16px;
-    font-family: inherit;
-    background: black;
-    color: white;
-    cursor: pointer;
-}
-#print-btn:disabled { background: #999; cursor: default; }
-#print-status { font-size: 13px; color: gray; margin-top: 8px; text-align: center; }
 </style>
 </head>
 <body>
@@ -136,13 +120,10 @@ canvas { display: none; }
                 <div id="error-log"></div>
 
                 <div id="results-content" style="display:none;">
+                    <p style="font-size: 15px; line-height: 1.8; margin: 0 0 4px;">A custom collage has been created based on your reminiscence.</p>
                     <img id="preview">
-
                     <p class="layers-label">Your collage is made of these layers:</p>
                     <div id="layers-list"></div>
-
-                    <button id="print-btn" onclick="sendToPrinter()">Print</button>
-                    <p id="print-status"></p>
                 </div>
             </div>
         </div>
@@ -187,8 +168,6 @@ const FONT   = "48px 'Space Mono', monospace";
 const MARGIN = 36;
 const LINE_H = 64;
 
-const PI_URL = "https://api.yourdomain.com";
-
 function startQuiz() {
     document.getElementById("intro").style.display = "none";
     document.getElementById("quiz").style.display  = "block";
@@ -211,15 +190,15 @@ function loadQuestion() {
 
         const btn = document.createElement("button");
         btn.className = "option-btn";
-        btn.textContent = "Create Artwork";
+        btn.textContent = "Create Collage";
         btn.onclick = () => {
             customText = input.value.trim().toLowerCase() || "everything";
             questionEl.style.display = "none";
             answersEl.style.display  = "none";
             progressEl.style.display = "none";
             document.getElementById("result").style.display = "block";
-            statusEl.textContent = "Creating your artwork…";
-            generateArtwork();
+            statusEl.textContent = "Creating your collage…";
+            generateCollage();
         };
 
         answersEl.appendChild(input);
@@ -257,7 +236,7 @@ function dashedLine() {
     return "-".repeat(count);
 }
 
-async function generateArtwork() {
+async function generateCollage() {
     const keys     = selections.map((sel, i) => `${i + 1}${["A","B","C","D"][sel]}`);
     const drawKeys = [...keys].sort(() => Math.random() - 0.5);
 
@@ -289,7 +268,7 @@ async function generateArtwork() {
 
     document.getElementById("preview").src = exportCanvas.toDataURL("image/jpeg", 0.92);
     statusEl.textContent = failed.length > 0
-        ? `Artwork created with ${loaded.length} of 5 images (${failed.length} failed to load).`
+        ? `Collage created with ${loaded.length} of 5 images (${failed.length} failed to load).`
         : "";
 
     buildLayerList(keys);
@@ -307,7 +286,6 @@ function buildLayerList(keys) {
         const item = document.createElement("div");
         item.className = "layer-item";
 
-        // Thumbnail — use a placeholder div first, swap in image if it loads
         const placeholder = document.createElement("div");
         placeholder.className = "layer-thumb-placeholder";
         item.appendChild(placeholder);
@@ -331,7 +309,6 @@ function buildLayerList(keys) {
         item.appendChild(info);
         list.appendChild(item);
 
-        // Staggered fade-in
         setTimeout(() => item.classList.add("visible"), i * 100);
     });
 }
@@ -368,6 +345,9 @@ function drawImageLayer(img, key) {
     ctx.restore();
 }
 
+
+// Title text + dashes
+
 function drawReceipt() {
     ctx.save();
     ctx.font         = FONT;
@@ -383,6 +363,9 @@ function drawReceipt() {
     ctx.fillText("resisting", x, y);  y += LINE_H;
     ctx.fillText("transience", x, y); y += LINE_H + 8;
     ctx.fillText(dash, x, y);
+
+    
+// "I am afraid of losing..." text + timestamp
 
     const pad = n => String(n).padStart(2, "0");
     const now = new Date();
