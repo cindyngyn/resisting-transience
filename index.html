@@ -120,7 +120,7 @@ canvas { display: none; }
                 <div id="error-log"></div>
 
                 <div id="results-content" style="display:none;">
-                    <p style="font-size: 15px; line-height: 1.8; margin: 0 0 4px;">A custom collage has been created based on your reminiscence.</p>
+                    <p style="font-size: 15px; line-height: 1.8; margin: 0 0 4px;">A collage has been created based on your reminiscence.</p>
                     <img id="preview">
                     <p class="layers-label">Your collage is made of these layers:</p>
                     <div id="layers-list"></div>
@@ -320,6 +320,7 @@ function drawImageLayer(img, key) {
     ctx.globalAlpha = isLowOpacity
         ? 0.15 + Math.random() * 0.35
         : 0.45 + Math.random() * 0.40;
+    if (qNum === 3) ctx.globalCompositeOperation = "multiply";
 
     const canvasRatio = canvas.width / canvas.height;
     const imgRatio    = img.width / img.height;
@@ -345,7 +346,6 @@ function drawImageLayer(img, key) {
     ctx.restore();
 }
 
-
 // Title text + dashes
 
 function drawReceipt() {
@@ -364,7 +364,6 @@ function drawReceipt() {
     ctx.fillText("transience", x, y); y += LINE_H + 8;
     ctx.fillText(dash, x, y);
 
-    
 // "I am afraid of losing..." text + timestamp
 
     const pad = n => String(n).padStart(2, "0");
