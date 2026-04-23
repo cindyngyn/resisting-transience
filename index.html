@@ -5,6 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Resisting Transience</title>
 <link href="https://fonts.googleapis.com/css2?family=Space+Mono&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <style>
 body {
     margin: 0;
@@ -13,27 +14,23 @@ body {
     display: flex;
     justify-content: center;
 }
-
 .container {
     width: 100%;
     max-width: 500px;
     padding: 24px;
     box-sizing: border-box;
 }
-
 .title-image {
     width: 100%;
     display: block;
     margin-bottom: 16px;
 }
-
 .card {
     background: white;
     padding: 24px;
     border-radius: 16px;
     box-shadow: 0 8px 24px rgba(0,0,0,0.08);
 }
-
 h2 { font-size: 20px; margin-bottom: 20px; margin-top: 0; }
 .option-btn {
     width: 100%;
@@ -49,7 +46,6 @@ h2 { font-size: 20px; margin-bottom: 20px; margin-top: 0; }
     text-align: left;
     line-height: 1.4;
 }
-
 .option-btn:active { transform: scale(0.98); }
 input[type="text"] {
     width: 100%;
@@ -61,20 +57,13 @@ input[type="text"] {
     border: 1px solid #ccc;
     box-sizing: border-box;
 }
-
 #progress { font-size: 14px; margin-bottom: 12px; color: gray; }
 #result { display: none; }
 #status { font-size: 14px; color: gray; margin-bottom: 8px; }
 #error-log { font-size: 12px; color: #c00; margin-top: 8px; line-height: 1.6; display: none; }
 #preview { width: 100%; margin-top: 16px; border-radius: 12px; display: block; margin-bottom: 24px; }
 canvas { display: none; }
-
-.layers-label {
-    font-size: 13px;
-    color: gray;
-    margin-bottom: 16px;
-}
-
+.layers-label { font-size: 13px; color: gray; margin-bottom: 16px; }
 .layer-item {
     display: flex;
     gap: 12px;
@@ -88,7 +77,6 @@ canvas { display: none; }
 }
 .layer-item:last-child { border-bottom: none; margin-bottom: 0; }
 .layer-item.visible { opacity: 1; transform: translateY(0); }
-
 .layer-thumb {
     width: 64px;
     height: 64px;
@@ -105,7 +93,6 @@ canvas { display: none; }
     flex-shrink: 0;
     border: 1px solid #eee;
 }
-
 .layer-info { flex: 1; min-width: 0; }
 .layer-number { font-size: 11px; color: #bbb; margin-bottom: 4px; }
 .layer-question { font-size: 12px; color: gray; margin-bottom: 5px; line-height: 1.5; }
@@ -152,6 +139,12 @@ canvas { display: none; }
 <canvas id="exportCanvas" width="675" height="1500"></canvas>
 
 <script>
+
+// Supabase config
+const SUPABASE_URL = "https://eawmignbdevldwfqitkn.supabase.co/rest/v1/";
+const SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImVhd21pZ25iZGV2bGR3ZnFpdGtuIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzY4MjUyNTksImV4cCI6MjA5MjQwMTI1OX0.551Gg3RRXS46nSwUDQQckZLM_kIBb2sQmCPTSee1ZeM";
+const sb = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
 const questions = [
     "How do you look back on memories?",
     "When faced with uncertainty, you feel:",
@@ -284,6 +277,7 @@ async function generateCollage() {
     exportCtx.fillRect(0, 0, exportCanvas.width, exportCanvas.height);
     exportCtx.drawImage(canvas, 0, 150);
 
+    // Show preview in the UI
     document.getElementById("preview").src = exportCanvas.toDataURL("image/jpeg", 0.92);
     statusEl.textContent = failed.length > 0
         ? `Collage created with ${loaded.length} of 5 images (${failed.length} failed to load).`
@@ -291,6 +285,49 @@ async function generateCollage() {
 
     buildLayerList(keys);
     document.getElementById("results-content").style.display = "block";
+
+    // Convert to JPEG Blob and upload to Supabase
+    uploadToSupabase();
+}
+
+async function uploadToSupabase() {
+    try {
+        statusEl.textContent = "Sending to printer…";
+
+        // Convert export canvas to a JPEG Blob
+        const blob = await new Promise((resolve, reject) => {
+            exportCanvas.toBlob(b => {
+                if (b) resolve(b);
+                else reject(new Error("Canvas toBlob failed"));
+            }, "image/jpeg", 0.92);
+        });
+
+        // Unique filename using timestamp
+        const filename = `collage_${Date.now()}.jpg`;
+
+        // Upload JPEG Blob to Supabase Storage bucket "collages"
+        const { error: uploadError } = await sb.storage
+            .from("collages")
+            .upload(filename, blob, {
+                contentType: "image/jpeg",
+                cacheControl: "3600"
+            });
+
+        if (uploadError) throw uploadError;
+
+        // Insert a print job record so the Pi knows to fetch and print it
+        const { error: insertError } = await sb
+            .from("print_jobs")
+            .insert({ image_path: filename, status: "pending" });
+
+        if (insertError) throw insertError;
+
+        statusEl.textContent = "Your collage is printing.";
+
+    } catch (err) {
+        console.error("Upload error:", err);
+        statusEl.textContent = `Could not send to printer: ${err.message}`;
+    }
 }
 
 function buildLayerList(keys) {
@@ -364,8 +401,6 @@ function drawImageLayer(img, key) {
     ctx.restore();
 }
 
-// Title text + dashes
-
 function drawReceipt() {
     ctx.save();
     ctx.font         = FONT;
@@ -381,8 +416,6 @@ function drawReceipt() {
     ctx.fillText("resisting", x, y);  y += LINE_H;
     ctx.fillText("transience", x, y); y += LINE_H + 8;
     ctx.fillText(dash, x, y);
-
-// "I am afraid of losing..." text + timestamp
 
     const pad = n => String(n).padStart(2, "0");
     const now = new Date();
