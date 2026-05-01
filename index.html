@@ -108,7 +108,7 @@ canvas { display: none; }
 
         <div id="intro">
             <p style="font-size: 15px; line-height: 1.8; margin: 0 0 24px;">
-                Complete the following questionnaire to receive a unique and custom collage.<br><br>
+                Complete the following questionnaire to receive a unique and custom receipt collage.<br><br>
                 Each layer will be drawn from your reflections and responses.<br>
             </p>
             <button class="option-btn" style="text-align: center;" onclick="startQuiz()">Proceed ₊˚⊹</button>
@@ -124,9 +124,9 @@ canvas { display: none; }
                 <div id="error-log"></div>
 
                 <div id="results-content" style="display:none;">
-                    <p style="font-size: 15px; line-height: 1.8; margin: 0 0 4px;">A collage has been created based on your reminiscence. ⊹˚.</p>
+                    <p style="font-size: 15px; line-height: 1.8; margin: 0 0 4px;">A receipt collage has been created based on your reminiscence. ⊹˚.</p>
                     <img id="preview">
-                    <p class="layers-label">Your collage is made of these layers:<br></p>
+                    <p class="layers-label">Your receipt collage is made of these layers:<br></p>
                     <div id="layers-list"></div>
                 </div>
             </div>
@@ -201,14 +201,14 @@ function loadQuestion() {
 
         const btn = document.createElement("button");
         btn.className = "option-btn";
-        btn.textContent = "Create Collage";
+        btn.textContent = "Create Receipt Collage";
         btn.onclick = () => {
             customText = input.value.trim().toLowerCase() || "everything";
             questionEl.style.display = "none";
             answersEl.style.display  = "none";
             progressEl.style.display = "none";
             document.getElementById("result").style.display = "block";
-            statusEl.textContent = "Creating your collage…";
+            statusEl.textContent = "Creating your receipt collage…";
             generateCollage();
         };
 
@@ -322,7 +322,7 @@ async function uploadToSupabase() {
 
         if (insertError) throw insertError;
 
-        statusEl.textContent = "Your collage is printing.";
+        statusEl.textContent = "Your receipt collage is printing.";
 
     } catch (err) {
         console.error("Upload error:", err);
