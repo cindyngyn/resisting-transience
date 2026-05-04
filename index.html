@@ -136,6 +136,7 @@ canvas { display: none; }
 </div>
 
 <canvas id="artCanvas" width="675" height="1200"></canvas>
+<canvas id="exportCanvas" width="675" height="1200"></canvas>
 
 <script>
 
@@ -274,7 +275,7 @@ async function generateCollage() {
 
     exportCtx.fillStyle = "#ffffff";
     exportCtx.fillRect(0, 0, exportCanvas.width, exportCanvas.height);
-    exportCtx.drawImage(canvas, 0, 150);
+    exportCtx.drawImage(canvas, 0, 0);
 
     // Show preview in the UI
     document.getElementById("preview").src = exportCanvas.toDataURL("image/jpeg", 0.92);
